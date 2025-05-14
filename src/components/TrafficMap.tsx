@@ -14,11 +14,11 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load Google Maps script
+  // Load Google Maps script with the additional APIs
   useEffect(() => {
     const loadGoogleMapsScript = () => {
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,visualization&callback=initMap`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,visualization,routes,roads&callback=initMap`;
       script.async = true;
       script.defer = true;
       
