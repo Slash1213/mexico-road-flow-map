@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { RouteNavigator } from "./RouteNavigator";
 
 interface TrafficMapProps {
   apiKey: string;
@@ -147,8 +148,15 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full relative">
       <div ref={mapRef} className="h-full w-full" />
+      
+      {/* Route Navigator */}
+      <div className="absolute top-4 left-4 z-10 w-80">
+        <RouteNavigator map={map} />
+      </div>
+      
+      {/* Traffic Legend */}
       <div className="absolute bottom-4 right-4 z-10">
         <Card className="p-2 shadow-lg bg-white bg-opacity-90">
           <div className="text-xs font-semibold mb-1">Niveles de Tráfico</div>
