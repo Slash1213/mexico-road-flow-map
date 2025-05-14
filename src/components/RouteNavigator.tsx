@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Navigation, Route, MapPin } from "lucide-react";
+import { Navigation, Route, MapPin, Clock } from "lucide-react";
 import { Card } from "./ui/card";
 
 interface RouteNavigatorProps {
@@ -16,6 +16,7 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
   const [calculating, setCalculating] = useState<boolean>(false);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   const [routeMarkers, setRouteMarkers] = useState<google.maps.Marker[]>([]);
+  const [alternativeRoutes, setAlternativeRoutes] = useState<boolean>(false);
 
   const calculateRoute = () => {
     if (!map) {
@@ -39,8 +40,7 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
     setCalculating(true);
     clearRoute(); // Clear previous routes
 
-    // We'll use the DirectionsService first, as it's compatible with place names
-    // This will help us get the coordinates for our origin and destination
+    // Usar la Directions API para calcular la ruta
     const directionsService = new google.maps.DirectionsService();
 
     directionsService.route(
@@ -48,6 +48,11 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
         origin: origin,
         destination: destination,
         travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: alternativeRoutes,
+        drivingOptions: {
+          departureTime: new Date(), // Usar la hora actual
+          trafficModel: google.maps.TrafficModel.BEST_GUESS
+        }
       },
       (result, status) => {
         if (status === google.maps.DirectionsStatus.OK && result) {
@@ -112,18 +117,9 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
               title: "Ruta calculada",
               description: `Distancia: ${distance}. Tiempo estimado: ${duration}${trafficDuration ? ` (Con tráfico: ${trafficDuration})` : ""}`,
             });
-          }
-          
-          // Now use the Roads API to snap the route to roads
-          // This is a simplified example, as the full implementation would require
-          // breaking the path into segments due to API limits
-          try {
-            // This part would normally need to be implemented with the Roads API
-            // but requires additional backend support for handling the API calls
-            console.log("Roads API snapping would be applied here");
-            // For a production app, you'd implement proper Roads API integration
-          } catch (roadsError) {
-            console.error("Roads API error:", roadsError);
+            
+            // Ahora también usaremos la Distance Matrix API para obtener información más detallada
+            calculateDistanceMatrix(originLocation, destinationLocation);
           }
 
         } else {
@@ -135,6 +131,56 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
         }
         
         setCalculating(false);
+      }
+    );
+  };
+
+  const calculateDistanceMatrix = (origin: google.maps.LatLng, destination: google.maps.LatLng) => {
+    const service = new google.maps.DistanceMatrixService();
+    
+    service.getDistanceMatrix(
+      {
+        origins: [origin],
+        destinations: [destination],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+        avoidHighways: false,
+        avoidTolls: false,
+        drivingOptions: {
+          departureTime: new Date(),
+          trafficModel: google.maps.TrafficModel.BEST_GUESS,
+        },
+      },
+      (response, status) => {
+        if (status === 'OK' && response) {
+          const element = response.rows[0].elements[0];
+          
+          if (element.status === 'OK') {
+            // Mostrar información adicional del tráfico
+            const trafficInfo = {
+              distance: element.distance.text,
+              duration: element.duration.text,
+              durationInTraffic: element.duration_in_traffic?.text
+            };
+            
+            // Calculamos la diferencia de tiempo debido al tráfico
+            if (element.duration && element.duration_in_traffic) {
+              const normalSeconds = element.duration.value;
+              const trafficSeconds = element.duration_in_traffic.value;
+              const difference = trafficSeconds - normalSeconds;
+              
+              if (difference > 60) {
+                const minutes = Math.floor(difference / 60);
+                toast({
+                  title: "Información de tráfico",
+                  description: `El tráfico actual añade ${minutes} minutos al tiempo normal de viaje.`,
+                });
+              }
+            }
+            
+            console.log("Distance Matrix results:", trafficInfo);
+          }
+        }
       }
     );
   };
@@ -190,14 +236,36 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
           </div>
         </div>
         
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="alternativeRoutes"
+            checked={alternativeRoutes}
+            onChange={(e) => setAlternativeRoutes(e.target.checked)}
+            className="rounded border-gray-300"
+          />
+          <label htmlFor="alternativeRoutes" className="text-xs text-gray-500">
+            Mostrar rutas alternativas
+          </label>
+        </div>
+        
         <div className="flex gap-2">
           <Button
             onClick={calculateRoute}
             className="flex-1"
             disabled={calculating || !origin || !destination}
           >
-            <Route className="h-4 w-4 mr-2" />
-            {calculating ? "Calculando..." : "Calcular"}
+            {calculating ? (
+              <>
+                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                Calculando...
+              </>
+            ) : (
+              <>
+                <Route className="h-4 w-4 mr-2" />
+                Calcular
+              </>
+            )}
           </Button>
           
           <Button
