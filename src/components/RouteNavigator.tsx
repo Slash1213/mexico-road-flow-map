@@ -3,12 +3,22 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Navigation, Route, MapPin, Clock } from "lucide-react";
+import { Navigation, Route, MapPin, Clock, Car } from "lucide-react";
 import { Card } from "./ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface RouteNavigatorProps {
   map: google.maps.Map | null;
 }
+
+// Rutas predeterminadas
+const predefinedRoutes = [
+  { name: "CDMX a Cuernavaca", origin: "Ciudad de México", destination: "Cuernavaca, Morelos" },
+  { name: "Guadalajara a Puerto Vallarta", origin: "Guadalajara, Jalisco", destination: "Puerto Vallarta, Jalisco" },
+  { name: "Monterrey a Saltillo", origin: "Monterrey, Nuevo León", destination: "Saltillo, Coahuila" },
+  { name: "Cancún a Tulum", origin: "Cancún, Quintana Roo", destination: "Tulum, Quintana Roo" },
+  { name: "Puebla a Veracruz", origin: "Puebla, Puebla", destination: "Veracruz, Veracruz" },
+];
 
 export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
   const [origin, setOrigin] = useState<string>("");
@@ -17,6 +27,19 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   const [routeMarkers, setRouteMarkers] = useState<google.maps.Marker[]>([]);
   const [alternativeRoutes, setAlternativeRoutes] = useState<boolean>(false);
+  const [selectedPredefinedRoute, setSelectedPredefinedRoute] = useState<string>("");
+
+  const handlePredefinedRouteChange = (value: string) => {
+    setSelectedPredefinedRoute(value);
+    
+    if (value) {
+      const selectedRoute = predefinedRoutes.find(route => route.name === value);
+      if (selectedRoute) {
+        setOrigin(selectedRoute.origin);
+        setDestination(selectedRoute.destination);
+      }
+    }
+  };
 
   const calculateRoute = () => {
     if (!map) {
@@ -194,6 +217,9 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
     // Clear markers
     routeMarkers.forEach(marker => marker.setMap(null));
     setRouteMarkers([]);
+
+    // Reset selected predefined route
+    setSelectedPredefinedRoute("");
   };
 
   return (
@@ -204,6 +230,28 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
       </div>
       
       <div className="space-y-3">
+        {/* Barra de navegación para rutas predeterminadas */}
+        <div className="relative">
+          <label htmlFor="predefinedRoutes" className="text-xs text-gray-500 mb-1 block">
+            Rutas Populares
+          </label>
+          <div className="flex items-center">
+            <Car className="h-4 w-4 text-blue-500 absolute left-3 z-10" />
+            <Select value={selectedPredefinedRoute} onValueChange={handlePredefinedRouteChange}>
+              <SelectTrigger className="pl-9">
+                <SelectValue placeholder="Seleccionar ruta popular" />
+              </SelectTrigger>
+              <SelectContent>
+                {predefinedRoutes.map((route) => (
+                  <SelectItem key={route.name} value={route.name}>
+                    {route.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
         <div className="relative">
           <label htmlFor="origin" className="text-xs text-gray-500 mb-1 block">
             Origen
