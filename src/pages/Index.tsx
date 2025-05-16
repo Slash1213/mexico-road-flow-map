@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,7 +22,7 @@ const Index = () => {
             <div className="flex items-center gap-2">
               <Route className="h-8 w-8 text-blue-600" />
               <h1 className="text-xl md:text-2xl font-bold text-slate-800">
-                Sistema de Gestión de Carreteras de México
+                SmartRoads
               </h1>
             </div>
             <MexicoRegionSelector
@@ -180,7 +181,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-white border-t mt-8 py-6">
         <div className="container mx-auto px-4 md:px-6 text-center text-slate-500 text-sm">
-          &copy; 2025 Sistema de Gestión de Carreteras de México. Todos los derechos reservados.
+          &copy; 2025 SmartRoads. Todos los derechos reservados.
         </div>
       </footer>
     </div>
@@ -211,3 +212,4 @@ const StatCard = ({
 };
 
 export default Index;
+
