@@ -17,7 +17,7 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   const [error, setError] = useState<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState<boolean>(false);
 
-  // Load Google Maps script with the additional APIs
+  // Load Google Maps script with the corrected API libraries
   useEffect(() => {
     // Check if script is already loaded
     if (window.google && window.google.maps) {
@@ -40,7 +40,8 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
         
         const script = document.createElement("script");
         script.id = "google-maps-script";
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,visualization,routes,roads&callback=initMap`;
+        // Removed 'roads' library as it's causing an error
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,visualization&callback=initMap`;
         script.async = true;
         script.defer = true;
         
@@ -177,7 +178,6 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
     return (
       <div className="h-full w-full flex items-center justify-center bg-slate-100">
         <div className="text-center">
-          <Skeleton className="h-8 w-8 rounded-full mx-auto mb-4" />
           <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando mapa...</p>
         </div>
