@@ -16,8 +16,8 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   
-  // Coordinates for Poza Rica de Hidalgo, Mexico
-  const pozaRicaCoordinates = [-97.4584, 20.5325];
+  // Coordinates for Poza Rica de Hidalgo, Mexico - explicitly typed as [longitude, latitude] tuple
+  const pozaRicaCoordinates: [number, number] = [-97.4584, 20.5325];
 
   useEffect(() => {
     if (!mapContainer.current) return;
