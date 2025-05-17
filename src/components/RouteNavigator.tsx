@@ -42,8 +42,8 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
 
   const calculateRoute = () => {
     if (!origin || !destination) {
-      toast({
-        title: "Campos requeridos",
+      // Fix: Use toast as a function, not as a JSX element with object props
+      toast("Campos requeridos", {
         description: "Por favor ingrese un origen y un destino."
       });
       return;
@@ -64,8 +64,8 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
         duration: `${mockDuration} minutos`
       });
       
-      toast({
-        title: "Ruta calculada",
+      // Fix: Use toast as a function, not as a JSX element with object props
+      toast("Ruta calculada", {
         description: `Distancia: ${mockDistance} km. Tiempo estimado: ${mockDuration} minutos`
       });
       
