@@ -15,6 +15,7 @@ interface TrafficMapProps {
 export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const [mapboxToken, setMapboxToken] = useState<string>("");
   
   // Coordinates for Poza Rica de Hidalgo, Mexico - explicitly typed as [longitude, latitude] tuple
   const pozaRicaCoordinates: [number, number] = [-97.4584, 20.5325];
@@ -22,32 +23,41 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   useEffect(() => {
     if (!mapContainer.current) return;
     
+    // Use default public demo token from Mapbox
+    // This is a public token that can be used for development and testing
+    const token = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA';
+    setMapboxToken(token);
+    
     // Set Mapbox access token
-    mapboxgl.accessToken = 'sk.eyJ1IjoidGhlc2xhc2hnIiwiYSI6ImNtYXJ1d3ZzNTBhdHoyaW9reTZxdWFnejMifQ.fPSP8CA45qXegfI1gUd_-A';
+    mapboxgl.accessToken = token;
     
-    // Create new map instance
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: pozaRicaCoordinates,
-      zoom: 13
-    });
-    
-    // Add navigation control (zoom buttons)
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    
-    // Add a marker at Poza Rica
-    new mapboxgl.Marker({ color: '#3FB1CE' })
-      .setLngLat(pozaRicaCoordinates)
-      .setPopup(new mapboxgl.Popup().setHTML('<h3>Poza Rica de Hidalgo</h3><p>Veracruz, México</p>'))
-      .addTo(map.current);
-      
-    // Show toast when map is loaded
-    map.current.on('load', () => {
-      toast("Mapa cargado correctamente", {
-        description: "Visualizando Poza Rica de Hidalgo, Veracruz"
+    try {
+      // Create new map instance
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: pozaRicaCoordinates,
+        zoom: 13
       });
-    });
+      
+      // Add navigation control (zoom buttons)
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      
+      // Add a marker at Poza Rica
+      new mapboxgl.Marker({ color: '#3FB1CE' })
+        .setLngLat(pozaRicaCoordinates)
+        .setPopup(new mapboxgl.Popup().setHTML('<h3>Poza Rica de Hidalgo</h3><p>Veracruz, México</p>'))
+        .addTo(map.current);
+        
+      // Show toast when map is loaded
+      map.current.on('load', () => {
+        toast("Mapa cargado correctamente", {
+          description: "Visualizando Poza Rica de Hidalgo, Veracruz"
+        });
+      });
+    } catch (error) {
+      console.error("Error initializing map:", error);
+    }
     
     // Cleanup
     return () => {
