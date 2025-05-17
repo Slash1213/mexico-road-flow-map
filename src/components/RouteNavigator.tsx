@@ -1,27 +1,27 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { Navigation, Route, MapPin, Clock, Car } from "lucide-react";
 import { Card } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import mapboxgl from 'mapbox-gl';
 
 interface RouteNavigatorProps {
-  map: google.maps.Map | null;
+  map: mapboxgl.Map | null;
 }
 
 // Rutas predeterminadas
 const predefinedRoutes = [
-  { name: "CDMX a Cuernavaca", origin: "Ciudad de México", destination: "Cuernavaca, Morelos" },
-  { name: "Guadalajara a Puerto Vallarta", origin: "Guadalajara, Jalisco", destination: "Puerto Vallarta, Jalisco" },
-  { name: "Monterrey a Saltillo", origin: "Monterrey, Nuevo León", destination: "Saltillo, Coahuila" },
-  { name: "Cancún a Tulum", origin: "Cancún, Quintana Roo", destination: "Tulum, Quintana Roo" },
-  { name: "Puebla a Veracruz", origin: "Puebla, Puebla", destination: "Veracruz, Veracruz" },
+  { name: "Poza Rica a Papantla", origin: "Poza Rica de Hidalgo, Veracruz", destination: "Papantla, Veracruz" },
+  { name: "Poza Rica a Tuxpan", origin: "Poza Rica de Hidalgo, Veracruz", destination: "Tuxpan, Veracruz" },
+  { name: "Poza Rica a Xalapa", origin: "Poza Rica de Hidalgo, Veracruz", destination: "Xalapa, Veracruz" },
+  { name: "Poza Rica a Veracruz", origin: "Poza Rica de Hidalgo, Veracruz", destination: "Veracruz, Veracruz" },
+  { name: "Poza Rica a Puebla", origin: "Poza Rica de Hidalgo, Veracruz", destination: "Puebla, Puebla" },
 ];
 
 export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
-  const [origin, setOrigin] = useState<string>("");
+  const [origin, setOrigin] = useState<string>("Poza Rica de Hidalgo, Veracruz");
   const [destination, setDestination] = useState<string>("");
   const [calculating, setCalculating] = useState<boolean>(false);
   const [routeInfo, setRouteInfo] = useState<{distance: string, duration: string} | null>(null);
@@ -42,7 +42,6 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
 
   const calculateRoute = () => {
     if (!origin || !destination) {
-      // Fix: Use toast as a function, not as a JSX element with object props
       toast("Campos requeridos", {
         description: "Por favor ingrese un origen y un destino."
       });
@@ -64,7 +63,6 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
         duration: `${mockDuration} minutos`
       });
       
-      // Fix: Use toast as a function, not as a JSX element with object props
       toast("Ruta calculada", {
         description: `Distancia: ${mockDistance} km. Tiempo estimado: ${mockDuration} minutos`
       });
@@ -76,7 +74,7 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
   const clearRoute = () => {
     setRouteInfo(null);
     setSelectedPredefinedRoute("");
-    setOrigin("");
+    setOrigin("Poza Rica de Hidalgo, Veracruz");
     setDestination("");
   };
 
