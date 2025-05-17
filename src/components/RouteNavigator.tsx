@@ -44,8 +44,7 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
     if (!origin || !destination) {
       toast({
         title: "Campos requeridos",
-        description: "Por favor ingrese un origen y un destino.",
-        variant: "destructive",
+        description: "Por favor ingrese un origen y un destino."
       });
       return;
     }
@@ -67,7 +66,7 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
       
       toast({
         title: "Ruta calculada",
-        description: `Distancia: ${mockDistance} km. Tiempo estimado: ${mockDuration} minutos`,
+        description: `Distancia: ${mockDistance} km. Tiempo estimado: ${mockDuration} minutos`
       });
       
       setCalculating(false);
