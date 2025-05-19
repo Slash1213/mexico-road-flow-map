@@ -7,10 +7,9 @@ import { Navigation, Route, MapPin, Clock, Car, ChevronDown, ChevronUp } from "l
 import { Card } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
-import L from "leaflet";
 
 interface RouteNavigatorProps {
-  map: L.Map | null;
+  map: google.maps.Map | null;
   graphhopperApiKey: string;
 }
 
@@ -27,11 +26,13 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
   const [origin, setOrigin] = useState<string>("");
   const [destination, setDestination] = useState<string>("");
   const [calculating, setCalculating] = useState<boolean>(false);
-  const [routeLayer, setRouteLayer] = useState<L.Polyline | null>(null);
-  const [routeMarkers, setRouteMarkers] = useState<L.Marker[]>([]);
+  const [routeLayer, setRouteLayer] = useState<google.maps.Polyline | null>(null);
+  const [routeMarkers, setRouteMarkers] = useState<google.maps.Marker[]>([]);
   const [alternativeRoutes, setAlternativeRoutes] = useState<boolean>(false);
   const [selectedPredefinedRoute, setSelectedPredefinedRoute] = useState<string>("");
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
 
   const handlePredefinedRouteChange = (value: string) => {
     setSelectedPredefinedRoute(value);
@@ -46,16 +47,20 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
   };
 
   // Función para geocodificar (convertir dirección a coordenadas)
-  const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
+  const geocodeAddress = async (address: string): Promise<google.maps.LatLngLiteral | null> => {
     try {
-      const response = await fetch(`https://graphhopper.com/api/1/geocode?q=${encodeURIComponent(address)}&locale=es&key=${graphhopperApiKey}`);
-      const data = await response.json();
+      const geocoder = new google.maps.Geocoder();
       
-      if (data.hits && data.hits.length > 0) {
-        const location = data.hits[0];
-        return [location.point.lat, location.point.lng];
-      }
-      return null;
+      return new Promise((resolve, reject) => {
+        geocoder.geocode({ address }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
+            const location = results[0].geometry.location;
+            resolve({ lat: location.lat(), lng: location.lng() });
+          } else {
+            reject(null);
+          }
+        });
+      });
     } catch (error) {
       console.error("Error geocodificando dirección:", error);
       return null;
@@ -77,112 +82,98 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
     clearRoute(); // Limpiar rutas anteriores
 
     try {
-      // Geocodificar origen y destino
-      const originCoords = await geocodeAddress(origin);
-      const destCoords = await geocodeAddress(destination);
-
-      if (!originCoords || !destCoords) {
-        toast.error("No se pudieron encontrar las coordenadas para la dirección proporcionada.");
-        setCalculating(false);
-        return;
+      // Inicializar los servicios de dirección si no existen
+      if (!directionsService) {
+        setDirectionsService(new google.maps.DirectionsService());
       }
-
-      // Crear marcadores para origen y destino
-      const originMarker = L.marker(originCoords, {
-        icon: L.icon({
-          iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
-        })
-      }).addTo(map).bindPopup(`<b>Origen:</b> ${origin}`);
-
-      const destMarker = L.marker(destCoords, {
-        icon: L.icon({
-          iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
-        })
-      }).addTo(map).bindPopup(`<b>Destino:</b> ${destination}`);
-
-      setRouteMarkers([originMarker, destMarker]);
-
-      // Calcular la ruta usando Graphhopper
-      const url = `https://graphhopper.com/api/1/route?point=${originCoords[0]},${originCoords[1]}&point=${destCoords[0]},${destCoords[1]}&vehicle=car&locale=es&calc_points=true&key=${graphhopperApiKey}`;
       
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.paths && data.paths.length > 0) {
-        const path = data.paths[0];
-        const points = path.points.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
-
-        // Crear línea de ruta en el mapa
-        const routePolyline = L.polyline(points, {
-          color: '#4285F4',
-          weight: 5,
-          opacity: 0.7
-        }).addTo(map);
-
-        setRouteLayer(routePolyline);
-
-        // Ajustar el mapa para mostrar la ruta completa
-        map.fitBounds(routePolyline.getBounds());
-
-        // Información de la ruta
-        const distance = (path.distance / 1000).toFixed(1); // km
-        const duration = Math.round(path.time / 60000); // minutos
-
-        // Obtener información de tráfico simulada (Graphhopper no proporciona info de tráfico real)
-        const trafficFactor = Math.random() * 0.5 + 1; // Factor de tráfico entre 1 y 1.5
-        const durationWithTraffic = Math.round(duration * trafficFactor);
-        const trafficDelay = durationWithTraffic - duration;
-
-        // Corregir la llamada a toast para que coincida con la API de Sonner
-        toast(`Distancia: ${distance} km. Tiempo estimado: ${duration} min${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`);
-
-        if (trafficDelay > 5) {
-          toast(`El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`);
-        }
-
-        // Mostrar información de la ruta en el popup de la línea
-        routePolyline.bindPopup(`
-          <div>
-            <b>Distancia:</b> ${distance} km<br>
-            <b>Duración sin tráfico:</b> ${duration} min<br>
-            <b>Duración con tráfico:</b> ${durationWithTraffic} min<br>
-            <b>Retraso por tráfico:</b> ${trafficDelay} min
-          </div>
-        `);
-
+      if (!directionsRenderer) {
+        const renderer = new google.maps.DirectionsRenderer({
+          map: map,
+          suppressMarkers: false,
+          polylineOptions: {
+            strokeColor: '#4285F4',
+            strokeWeight: 5,
+            strokeOpacity: 0.7
+          }
+        });
+        setDirectionsRenderer(renderer);
       } else {
-        throw new Error("No se encontró ninguna ruta");
+        directionsRenderer.setMap(map);
       }
+      
+      const currentDirectionsService = directionsService || new google.maps.DirectionsService();
+      const currentDirectionsRenderer = directionsRenderer || new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: false,
+        polylineOptions: {
+          strokeColor: '#4285F4',
+          strokeWeight: 5,
+          strokeOpacity: 0.7
+        }
+      });
+
+      // Calcular ruta
+      currentDirectionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: alternativeRoutes
+        },
+        (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            currentDirectionsRenderer.setDirections(result);
+            
+            // Información sobre la ruta
+            const route = result.routes[0];
+            const leg = route.legs[0];
+            const distance = leg.distance?.text || "";
+            const duration = leg.duration?.text || "";
+            
+            // Simular información de tráfico
+            const trafficFactor = Math.random() * 0.5 + 1; // Factor de tráfico entre 1 y 1.5
+            const durationWithTraffic = Math.round((leg.duration?.value || 0) * trafficFactor / 60); // minutos
+            const durationMinutes = Math.round((leg.duration?.value || 0) / 60); // minutos
+            const trafficDelay = durationWithTraffic - durationMinutes;
+            
+            toast(`Distancia: ${distance}. Tiempo estimado: ${duration}${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`);
+            
+            if (trafficDelay > 5) {
+              toast(`El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`);
+            }
+          } else {
+            toast.error("No se pudo calcular la ruta. Intente con otra ubicación.");
+            console.error("Error al calcular la ruta:", status);
+          }
+          
+          setCalculating(false);
+        }
+      );
 
     } catch (error) {
       console.error("Error calculando ruta:", error);
-      // Corregir la llamada a toast.error para que coincida con la API de Sonner
       toast.error("No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes.");
-    } finally {
       setCalculating(false);
     }
   };
 
   const clearRoute = () => {
-    // Eliminar capa de ruta
-    if (routeLayer && map) {
-      map.removeLayer(routeLayer);
+    // Limpiar ruta de directions renderer
+    if (directionsRenderer) {
+      directionsRenderer.setMap(null);
+      setDirectionsRenderer(null);
+    }
+    
+    // Eliminar polyline si existe
+    if (routeLayer) {
+      routeLayer.setMap(null);
       setRouteLayer(null);
     }
     
     // Eliminar marcadores
     routeMarkers.forEach(marker => {
-      if (map) map.removeLayer(marker);
+      marker.setMap(null);
     });
     setRouteMarkers([]);
 

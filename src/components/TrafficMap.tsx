@@ -1,103 +1,103 @@
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { RouteNavigator } from "./RouteNavigator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { GoogleMap, useJsApiLoader, InfoWindow } from "@react-google-maps/api";
 
 interface TrafficMapProps {
   apiKey: string;
   region: string;
 }
 
+// Ocultar el logo de Google Maps y otros controles
+const mapContainerStyle = {
+  width: "100%",
+  height: "100%",
+};
+
+const mapStyles = `
+  .gmnoprint, .gm-style-cc {
+    display: none !important;
+  }
+  .gm-style a[href^="https://maps.google.com/maps"] {
+    display: none !important;
+  }
+  .gm-style-iw-a {
+    position: absolute;
+    width: 9999px;
+    height: 9999px;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  }
+`;
+
 export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<L.Map | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const graphhopperApiKey = "32b1ca01-f7f0-450f-b90f-f86a4d6475c1";
 
-  // Inicializar el mapa Leaflet con Graphhopper
-  useEffect(() => {
-    if (!mapRef.current || map) return;
-
-    try {
-      console.log("Inicializando mapa de Leaflet...");
-      
-      // Centro de México
-      let center: L.LatLngExpression = [23.6345, -102.5528]; // [lat, lng]
-      let zoomLevel = 5; // Default para todo México
-      
-      // Ajustar centro y zoom basado en la región
-      if (region !== 'all') {
-        // Coordenadas de regiones
-        const regions: Record<string, {center: L.LatLngExpression, zoom: number}> = {
-          'cdmx': { center: [19.4326, -99.1332], zoom: 10 },
-          'jalisco': { center: [20.6595, -103.3494], zoom: 8 },
-          'nuevoleon': { center: [25.6866, -100.3161], zoom: 8 },
-        };
-        
-        if (regions[region]) {
-          center = regions[region].center;
-          zoomLevel = regions[region].zoom;
-        }
-      }
-      
-      // Crear el mapa
-      const newMap = L.map(mapRef.current, {
-        center: center,
-        zoom: zoomLevel,
-        layers: [
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          })
-        ],
-        zoomControl: true,
-      });
-      
-      // Añadir control de escala
-      L.control.scale().addTo(newMap);
-      
-      setMap(newMap);
-      setLoading(false);
-      console.log("Mapa inicializado correctamente");
-      toast.success("Mapa cargado correctamente");
-    } catch (err) {
-      console.error("Error al inicializar el mapa:", err);
-      setError("Error al inicializar el mapa. Por favor, recargue la página.");
-      setLoading(false);
-      toast.error("Error al inicializar el mapa");
-    }
-  }, [region, map]);
-
-  // Actualizar mapa cuando cambia la región
-  useEffect(() => {
-    if (!map) return;
-
-    // Centro por defecto de México
-    let center: L.LatLngExpression = [23.6345, -102.5528];
+  // Centro de México y niveles de zoom por región
+  const getRegionSettings = (region: string): { center: google.maps.LatLngLiteral, zoom: number } => {
+    // Valor por defecto para todo México
+    let center = { lat: 23.6345, lng: -102.5528 };
     let zoom = 5;
     
     // Centros y zooms específicos por región
     if (region !== 'all') {
-      const regions: Record<string, {center: L.LatLngExpression, zoom: number}> = {
-        'cdmx': { center: [19.4326, -99.1332], zoom: 10 },
-        'jalisco': { center: [20.6595, -103.3494], zoom: 8 },
-        'nuevoleon': { center: [25.6866, -100.3161], zoom: 8 },
+      const regions: Record<string, {center: google.maps.LatLngLiteral, zoom: number}> = {
+        'cdmx': { center: { lat: 19.4326, lng: -99.1332 }, zoom: 10 },
+        'jalisco': { center: { lat: 20.6595, lng: -103.3494 }, zoom: 8 },
+        'nuevoleon': { center: { lat: 25.6866, lng: -100.3161 }, zoom: 8 },
       };
       
       if (regions[region]) {
-        center = regions[region].center;
-        zoom = regions[region].zoom;
+        return regions[region];
       }
     }
     
-    map.setView(center, zoom);
-  }, [region, map]);
+    return { center, zoom };
+  };
 
-  if (loading) {
+  // Configuraciones iniciales del mapa
+  const { center, zoom } = getRegionSettings(region);
+
+  // Cargar API de Google Maps
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: apiKey || 'AIzaSyBnpPTL-wXki-LPAXXJdGboCrvJoA_hY9M', // API key de prueba
+    libraries: ['places', 'visualization', 'drawing']
+  });
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    setLoading(false);
+    toast.success("Mapa cargado correctamente");
+  }, []);
+
+  // Actualizar mapa cuando cambia la región
+  useEffect(() => {
+    if (!mapRef.current) return;
+    
+    const { center, zoom } = getRegionSettings(region);
+    mapRef.current.setCenter(center);
+    mapRef.current.setZoom(zoom);
+  }, [region]);
+
+  // Manejar error de carga
+  useEffect(() => {
+    if (loadError) {
+      console.error("Error al cargar Google Maps:", loadError);
+      setError("Error al cargar el mapa. Por favor, recargue la página.");
+      setLoading(false);
+      toast.error("Error al inicializar el mapa");
+    }
+  }, [loadError]);
+
+  if (!isLoaded) {
     return (
       <div className="h-full w-full flex items-center justify-center bg-slate-100">
         <div className="text-center">
@@ -131,12 +131,38 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
 
   return (
     <div className="h-full w-full relative">
-      {/* Mapa con tamaño ajustado - más pequeño para no interferir con la interfaz de rutas */}
-      <div ref={mapRef} className="h-full w-full" />
+      {/* CSS para ocultar el logo de Google Maps */}
+      <style>{mapStyles}</style>
+      
+      {/* Contenedor del mapa */}
+      <div className="h-full w-full">
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          center={center}
+          zoom={zoom}
+          onLoad={onMapLoad}
+          options={{
+            fullscreenControl: false,
+            mapTypeControl: false,
+            streetViewControl: false,
+            zoomControl: true,
+            disableDefaultUI: false,
+            styles: [
+              {
+                featureType: "all",
+                elementType: "labels.icon",
+                stylers: [{ visibility: "off" }]
+              }
+            ]
+          }}
+        >
+          {/* Aquí irían marcadores y rutas si los hubiera */}
+        </GoogleMap>
+      </div>
       
       {/* Route Navigator - Colocado en una posición donde no interfiera con el mapa */}
       <div className="absolute bottom-20 left-4 z-10 w-80 md:w-96">
-        <RouteNavigator map={map} graphhopperApiKey={graphhopperApiKey} />
+        <RouteNavigator map={mapRef.current} graphhopperApiKey={graphhopperApiKey} />
       </div>
       
       {/* Traffic Legend */}
