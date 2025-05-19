@@ -7,9 +7,12 @@ import { toast } from "@/components/ui/sonner";
 import { GoogleMap, useJsApiLoader, InfoWindow } from "@react-google-maps/api";
 
 interface TrafficMapProps {
-  apiKey: string;
+  apiKey?: string;
   region: string;
 }
+
+// Define libraries outside component to avoid reloads
+const libraries = ['places', 'visualization', 'drawing'];
 
 // Ocultar el logo de Google Maps y otros controles
 const mapContainerStyle = {
@@ -39,6 +42,8 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const graphhopperApiKey = "32b1ca01-f7f0-450f-b90f-f86a4d6475c1";
+  
+  const googleMapsApiKey = "AIzaSyDXaGbgZtHs5108m67KK2oWEouSrDclWQk"; // Use the provided key
 
   // Centro de México y niveles de zoom por región
   const getRegionSettings = (region: string): { center: google.maps.LatLngLiteral, zoom: number } => {
@@ -68,8 +73,8 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
   // Cargar API de Google Maps
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: apiKey || 'AIzaSyBnpPTL-wXki-LPAXXJdGboCrvJoA_hY9M', // API key de prueba
-    libraries: ['places', 'visualization', 'drawing']
+    googleMapsApiKey: googleMapsApiKey,
+    libraries: libraries
   });
 
   const onMapLoad = useCallback((map: google.maps.Map) => {

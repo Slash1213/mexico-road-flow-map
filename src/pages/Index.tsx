@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,7 @@ import { MapPin, Route, ChartLine, List } from "lucide-react";
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState("all");
+  const googleMapsApiKey = "AIzaSyDXaGbgZtHs5108m67KK2oWEouSrDclWQk";
   
   return (
     <div className="min-h-screen bg-slate-50">
@@ -59,7 +61,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[600px] rounded-md overflow-hidden border">
-                  <TrafficMap apiKey="" region={selectedRegion} />
+                  <TrafficMap apiKey={googleMapsApiKey} region={selectedRegion} />
                 </div>
               </CardContent>
             </Card>
