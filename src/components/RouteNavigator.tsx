@@ -143,14 +143,11 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
         const durationWithTraffic = Math.round(duration * trafficFactor);
         const trafficDelay = durationWithTraffic - duration;
 
-        toast({
-          description: `Distancia: ${distance} km. Tiempo estimado: ${duration} min${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`
-        });
+        // Corregir la llamada a toast para que coincida con la API de Sonner
+        toast(`Distancia: ${distance} km. Tiempo estimado: ${duration} min${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`);
 
         if (trafficDelay > 5) {
-          toast({
-            description: `El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`
-          });
+          toast(`El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`);
         }
 
         // Mostrar información de la ruta en el popup de la línea
@@ -169,10 +166,8 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
 
     } catch (error) {
       console.error("Error calculando ruta:", error);
-      toast({
-        variant: "destructive",
-        description: "No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes."
-      });
+      // Corregir la llamada a toast.error para que coincida con la API de Sonner
+      toast.error("No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes.");
     } finally {
       setCalculating(false);
     }
