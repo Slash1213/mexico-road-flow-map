@@ -64,20 +64,12 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
 
   const calculateRoute = async () => {
     if (!map) {
-      toast({
-        title: "Error",
-        description: "El mapa no está disponible.",
-        variant: "destructive",
-      });
+      toast.error("El mapa no está disponible.");
       return;
     }
 
     if (!origin || !destination) {
-      toast({
-        title: "Campos requeridos",
-        description: "Por favor ingrese un origen y un destino.",
-        variant: "destructive",
-      });
+      toast.error("Por favor ingrese un origen y un destino.");
       return;
     }
 
@@ -90,11 +82,7 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
       const destCoords = await geocodeAddress(destination);
 
       if (!originCoords || !destCoords) {
-        toast({
-          title: "Error de geocodificación",
-          description: "No se pudieron encontrar las coordenadas para la dirección proporcionada.",
-          variant: "destructive",
-        });
+        toast.error("No se pudieron encontrar las coordenadas para la dirección proporcionada.");
         setCalculating(false);
         return;
       }
@@ -156,14 +144,12 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
         const trafficDelay = durationWithTraffic - duration;
 
         toast({
-          title: "Ruta calculada",
-          description: `Distancia: ${distance} km. Tiempo estimado: ${duration} min${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`,
+          description: `Distancia: ${distance} km. Tiempo estimado: ${duration} min${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`
         });
 
         if (trafficDelay > 5) {
           toast({
-            title: "Información de tráfico",
-            description: `El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`,
+            description: `El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`
           });
         }
 
@@ -184,9 +170,8 @@ export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) 
     } catch (error) {
       console.error("Error calculando ruta:", error);
       toast({
-        title: "Error al calcular la ruta",
-        description: "No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes.",
         variant: "destructive",
+        description: "No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes."
       });
     } finally {
       setCalculating(false);

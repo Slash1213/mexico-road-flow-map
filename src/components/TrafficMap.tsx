@@ -28,13 +28,13 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
       console.log("Inicializando mapa de Leaflet...");
       
       // Centro de México
-      let center = [23.6345, -102.5528]; // [lat, lng]
+      let center: L.LatLngExpression = [23.6345, -102.5528]; // [lat, lng]
       let zoomLevel = 5; // Default para todo México
       
       // Ajustar centro y zoom basado en la región
       if (region !== 'all') {
         // Coordenadas de regiones
-        const regions: Record<string, {center: [number, number], zoom: number}> = {
+        const regions: Record<string, {center: L.LatLngExpression, zoom: number}> = {
           'cdmx': { center: [19.4326, -99.1332], zoom: 10 },
           'jalisco': { center: [20.6595, -103.3494], zoom: 8 },
           'nuevoleon': { center: [25.6866, -100.3161], zoom: 8 },
@@ -78,12 +78,12 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
     if (!map) return;
 
     // Centro por defecto de México
-    let center: [number, number] = [23.6345, -102.5528];
+    let center: L.LatLngExpression = [23.6345, -102.5528];
     let zoom = 5;
     
     // Centros y zooms específicos por región
     if (region !== 'all') {
-      const regions: Record<string, {center: [number, number], zoom: number}> = {
+      const regions: Record<string, {center: L.LatLngExpression, zoom: number}> = {
         'cdmx': { center: [19.4326, -99.1332], zoom: 10 },
         'jalisco': { center: [20.6595, -103.3494], zoom: 8 },
         'nuevoleon': { center: [25.6866, -100.3161], zoom: 8 },
