@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrafficMap } from "@/components/TrafficMap";
@@ -10,9 +9,7 @@ import { MapPin, Route, ChartLine, List } from "lucide-react";
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState("all");
-  // Use the hardcoded API key instead of getting it from localStorage
-  const mapApiKey = "AIzaSyDXaGbgZtHs5108m67KK2oWEouSrDclWQk";
-
+  
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -62,7 +59,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[600px] rounded-md overflow-hidden border">
-                  <TrafficMap apiKey={mapApiKey} region={selectedRegion} />
+                  <TrafficMap apiKey="" region={selectedRegion} />
                 </div>
               </CardContent>
             </Card>
@@ -212,4 +209,3 @@ const StatCard = ({
 };
 
 export default Index;
-
