@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrafficMap } from "@/components/TrafficMap";
@@ -10,8 +9,9 @@ import { MapPin, Route, ChartLine, List } from "lucide-react";
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState("all");
-  const googleMapsApiKey = "AIzaSyDXaGbgZtHs5108m67KK2oWEouSrDclWQk";
-  
+  // Use the hardcoded API key instead of getting it from localStorage
+  const mapApiKey = "AIzaSyDXaGbgZtHs5108m67KK2oWEouSrDclWQk";
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -21,7 +21,7 @@ const Index = () => {
             <div className="flex items-center gap-2">
               <Route className="h-8 w-8 text-blue-600" />
               <h1 className="text-xl md:text-2xl font-bold text-slate-800">
-                SmartRoads
+                Sistema de Gestión de Carreteras de México
               </h1>
             </div>
             <MexicoRegionSelector
@@ -61,7 +61,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[600px] rounded-md overflow-hidden border">
-                  <TrafficMap apiKey={googleMapsApiKey} region={selectedRegion} />
+                  <TrafficMap apiKey={mapApiKey} region={selectedRegion} />
                 </div>
               </CardContent>
             </Card>
@@ -180,7 +180,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-white border-t mt-8 py-6">
         <div className="container mx-auto px-4 md:px-6 text-center text-slate-500 text-sm">
-          &copy; 2025 SmartRoads. Todos los derechos reservados.
+          &copy; 2025 Sistema de Gestión de Carreteras de México. Todos los derechos reservados.
         </div>
       </footer>
     </div>

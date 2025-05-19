@@ -1,7 +1,6 @@
 
 /// <reference types="vite/client" />
 /// <reference types="@types/google.maps" />
-/// <reference types="leaflet" />
 
 // Extend Google Maps namespace to include Routes API types if needed
 declare namespace google.maps {
@@ -53,8 +52,4 @@ declare namespace google.maps {
       placeId?: string;
     }
   }
-}
-
-declare module 'leaflet-routing-machine' {
-  export = L;
 }

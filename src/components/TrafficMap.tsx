@@ -1,108 +1,127 @@
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { RouteNavigator } from "./RouteNavigator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/sonner";
-import { GoogleMap, useJsApiLoader, InfoWindow } from "@react-google-maps/api";
 
 interface TrafficMapProps {
-  apiKey?: string;
+  apiKey: string;
   region: string;
 }
 
-// Define libraries outside component to avoid reloads
-const libraries = ['places', 'visualization', 'drawing'];
-
-// Ocultar el logo de Google Maps y otros controles
-const mapContainerStyle = {
-  width: "100%",
-  height: "100%",
-};
-
-const mapStyles = `
-  .gmnoprint, .gm-style-cc {
-    display: none !important;
-  }
-  .gm-style a[href^="https://maps.google.com/maps"] {
-    display: none !important;
-  }
-  .gm-style-iw-a {
-    position: absolute;
-    width: 9999px;
-    height: 9999px;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-  }
-`;
-
 export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
-  const mapRef = useRef<google.maps.Map | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const graphhopperApiKey = "32b1ca01-f7f0-450f-b90f-f86a4d6475c1";
-  
-  const googleMapsApiKey = "AIzaSyDXaGbgZtHs5108m67KK2oWEouSrDclWQk"; // Use the provided key
 
-  // Centro de México y niveles de zoom por región
-  const getRegionSettings = (region: string): { center: google.maps.LatLngLiteral, zoom: number } => {
-    // Valor por defecto para todo México
-    let center = { lat: 23.6345, lng: -102.5528 };
-    let zoom = 5;
-    
-    // Centros y zooms específicos por región
-    if (region !== 'all') {
-      const regions: Record<string, {center: google.maps.LatLngLiteral, zoom: number}> = {
-        'cdmx': { center: { lat: 19.4326, lng: -99.1332 }, zoom: 10 },
-        'jalisco': { center: { lat: 20.6595, lng: -103.3494 }, zoom: 8 },
-        'nuevoleon': { center: { lat: 25.6866, lng: -100.3161 }, zoom: 8 },
+  // Load Google Maps script with the additional APIs
+  useEffect(() => {
+    const loadGoogleMapsScript = () => {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,visualization,routes,roads&callback=initMap`;
+      script.async = true;
+      script.defer = true;
+      
+      // Create global init function
+      window.initMap = () => {
+        setLoading(false);
       };
       
-      if (regions[region]) {
-        return regions[region];
+      script.onerror = () => {
+        setError("Failed to load Google Maps API");
+        setLoading(false);
+      };
+      
+      document.head.appendChild(script);
+      
+      return () => {
+        // Cleanup
+        document.head.removeChild(script);
+        delete window.initMap;
+      };
+    };
+    
+    loadGoogleMapsScript();
+  }, [apiKey]);
+
+  // Initialize map after script loads
+  useEffect(() => {
+    if (!loading && !error && mapRef.current && !map) {
+      try {
+        // Center of Mexico
+        const mexicoCenter = { lat: 23.6345, lng: -102.5528 };
+        
+        // Set custom zoom level based on region selection
+        let zoomLevel = 5; // Default for all Mexico
+        let mapCenter = mexicoCenter;
+        
+        // Adjust center and zoom based on region
+        if (region !== 'all') {
+          // This would be replaced with proper region coordinates
+          const regions: Record<string, {center: {lat: number, lng: number}, zoom: number}> = {
+            'cdmx': { center: {lat: 19.4326, lng: -99.1332}, zoom: 10 },
+            'jalisco': { center: {lat: 20.6595, lng: -103.3494}, zoom: 8 },
+            'nuevoleon': { center: {lat: 25.6866, lng: -100.3161}, zoom: 8 },
+            // Add more regions as needed
+          };
+          
+          if (regions[region]) {
+            mapCenter = regions[region].center;
+            zoomLevel = regions[region].zoom;
+          }
+        }
+        
+        // Create the map
+        const newMap = new google.maps.Map(mapRef.current, {
+          center: mapCenter,
+          zoom: zoomLevel,
+          mapTypeId: 'roadmap',
+          mapTypeControl: true,
+          fullscreenControl: true,
+          streetViewControl: false,
+          rotateControl: false,
+        });
+        
+        // Add traffic layer
+        const trafficLayer = new google.maps.TrafficLayer();
+        trafficLayer.setMap(newMap);
+        
+        setMap(newMap);
+      } catch (err) {
+        setError("Error initializing map");
+        console.error("Map initialization error:", err);
       }
     }
-    
-    return { center, zoom };
-  };
+  }, [loading, error, region, map]);
 
-  // Configuraciones iniciales del mapa
-  const { center, zoom } = getRegionSettings(region);
-
-  // Cargar API de Google Maps
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: googleMapsApiKey,
-    libraries: libraries
-  });
-
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    setLoading(false);
-    toast.success("Mapa cargado correctamente");
-  }, []);
-
-  // Actualizar mapa cuando cambia la región
+  // Update map when region changes
   useEffect(() => {
-    if (!mapRef.current) return;
-    
-    const { center, zoom } = getRegionSettings(region);
-    mapRef.current.setCenter(center);
-    mapRef.current.setZoom(zoom);
-  }, [region]);
-
-  // Manejar error de carga
-  useEffect(() => {
-    if (loadError) {
-      console.error("Error al cargar Google Maps:", loadError);
-      setError("Error al cargar el mapa. Por favor, recargue la página.");
-      setLoading(false);
-      toast.error("Error al inicializar el mapa");
+    if (map && region) {
+      // Default center of Mexico
+      let center = { lat: 23.6345, lng: -102.5528 };
+      let zoom = 5;
+      
+      // Region-specific centers and zooms
+      if (region !== 'all') {
+        const regions: Record<string, {center: {lat: number, lng: number}, zoom: number}> = {
+          'cdmx': { center: {lat: 19.4326, lng: -99.1332}, zoom: 10 },
+          'jalisco': { center: {lat: 20.6595, lng: -103.3494}, zoom: 8 },
+          'nuevoleon': { center: {lat: 25.6866, lng: -100.3161}, zoom: 8 },
+          // Add more regions as needed
+        };
+        
+        if (regions[region]) {
+          center = regions[region].center;
+          zoom = regions[region].zoom;
+        }
+      }
+      
+      map.setCenter(center);
+      map.setZoom(zoom);
     }
-  }, [loadError]);
+  }, [region, map]);
 
-  if (!isLoaded) {
+  if (loading) {
     return (
       <div className="h-full w-full flex items-center justify-center bg-slate-100">
         <div className="text-center">
@@ -121,14 +140,8 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
           <h3 className="text-lg font-semibold text-red-700 mb-2">Error al cargar el mapa</h3>
           <p className="text-red-600">{error}</p>
           <p className="text-sm text-red-500 mt-4">
-            Verifique su conexión a Internet.
+            Verifique su clave de API y la conexión a Internet.
           </p>
-          <button 
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={() => window.location.reload()}
-          >
-            Reintentar
-          </button>
         </div>
       </div>
     );
@@ -136,38 +149,11 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
 
   return (
     <div className="h-full w-full relative">
-      {/* CSS para ocultar el logo de Google Maps */}
-      <style>{mapStyles}</style>
+      <div ref={mapRef} className="h-full w-full" />
       
-      {/* Contenedor del mapa */}
-      <div className="h-full w-full">
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={center}
-          zoom={zoom}
-          onLoad={onMapLoad}
-          options={{
-            fullscreenControl: false,
-            mapTypeControl: false,
-            streetViewControl: false,
-            zoomControl: true,
-            disableDefaultUI: false,
-            styles: [
-              {
-                featureType: "all",
-                elementType: "labels.icon",
-                stylers: [{ visibility: "off" }]
-              }
-            ]
-          }}
-        >
-          {/* Aquí irían marcadores y rutas si los hubiera */}
-        </GoogleMap>
-      </div>
-      
-      {/* Route Navigator - Colocado en una posición donde no interfiera con el mapa */}
-      <div className="absolute bottom-20 left-4 z-10 w-80 md:w-96">
-        <RouteNavigator map={mapRef.current} graphhopperApiKey={graphhopperApiKey} />
+      {/* Route Navigator */}
+      <div className="absolute top-4 left-4 z-10 w-80">
+        <RouteNavigator map={map} />
       </div>
       
       {/* Traffic Legend */}
@@ -193,3 +179,10 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
     </div>
   );
 };
+
+// Add TypeScript type definition for window.initMap
+declare global {
+  interface Window {
+    initMap: () => void;
+  }
+}
