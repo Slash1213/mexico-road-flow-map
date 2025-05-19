@@ -208,10 +208,11 @@ export const TrafficMap = ({ apiKey, region }: TrafficMapProps) => {
 
   return (
     <div className="h-full w-full relative">
+      {/* Mapa con tamaño ajustado - más pequeño para no interferir con la interfaz de rutas */}
       <div ref={mapRef} className="h-full w-full" />
       
-      {/* Route Navigator */}
-      <div className="absolute top-4 left-4 z-10 w-80">
+      {/* Route Navigator - Colocado en una posición donde no interfiera con el mapa */}
+      <div className="absolute bottom-20 left-4 z-10 w-80 md:w-96">
         <RouteNavigator map={map} />
       </div>
       
