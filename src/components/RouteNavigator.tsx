@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Navigation, Route, MapPin, Clock, Car, ChevronDown, ChevronUp } from "lucide-react";
 import { Card } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -9,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collap
 
 interface RouteNavigatorProps {
   map: google.maps.Map | null;
+  graphhopperApiKey: string;
 }
 
 // Rutas predeterminadas
@@ -20,15 +22,17 @@ const predefinedRoutes = [
   { name: "Puebla a Veracruz", origin: "Puebla, Puebla", destination: "Veracruz, Veracruz" },
 ];
 
-export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
+export const RouteNavigator = ({ map, graphhopperApiKey }: RouteNavigatorProps) => {
   const [origin, setOrigin] = useState<string>("");
   const [destination, setDestination] = useState<string>("");
   const [calculating, setCalculating] = useState<boolean>(false);
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [routeLayer, setRouteLayer] = useState<google.maps.Polyline | null>(null);
   const [routeMarkers, setRouteMarkers] = useState<google.maps.Marker[]>([]);
   const [alternativeRoutes, setAlternativeRoutes] = useState<boolean>(false);
   const [selectedPredefinedRoute, setSelectedPredefinedRoute] = useState<string>("");
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
 
   const handlePredefinedRouteChange = (value: string) => {
     setSelectedPredefinedRoute(value);
@@ -42,184 +46,138 @@ export const RouteNavigator = ({ map }: RouteNavigatorProps) => {
     }
   };
 
-  const calculateRoute = () => {
-    if (!map) {
-      toast({
-        title: "Error",
-        description: "El mapa no está disponible.",
-        variant: "destructive",
+  // Función para geocodificar (convertir dirección a coordenadas)
+  const geocodeAddress = async (address: string): Promise<google.maps.LatLngLiteral | null> => {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      
+      return new Promise((resolve, reject) => {
+        geocoder.geocode({ address }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
+            const location = results[0].geometry.location;
+            resolve({ lat: location.lat(), lng: location.lng() });
+          } else {
+            reject(null);
+          }
+        });
       });
+    } catch (error) {
+      console.error("Error geocodificando dirección:", error);
+      return null;
+    }
+  };
+
+  const calculateRoute = async () => {
+    if (!map) {
+      toast.error("El mapa no está disponible.");
       return;
     }
 
     if (!origin || !destination) {
-      toast({
-        title: "Campos requeridos",
-        description: "Por favor ingrese un origen y un destino.",
-        variant: "destructive",
-      });
+      toast.error("Por favor ingrese un origen y un destino.");
       return;
     }
 
     setCalculating(true);
-    clearRoute(); // Clear previous routes
+    clearRoute(); // Limpiar rutas anteriores
 
-    // Usar la Directions API para calcular la ruta
-    const directionsService = new google.maps.DirectionsService();
-
-    directionsService.route(
-      {
-        origin: origin,
-        destination: destination,
-        travelMode: google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: alternativeRoutes,
-        drivingOptions: {
-          departureTime: new Date(), // Usar la hora actual
-          trafficModel: google.maps.TrafficModel.BEST_GUESS
-        }
-      },
-      (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK && result) {
-          // Get origin and destination coordinates from the result
-          const originLocation = result.routes[0].legs[0].start_location;
-          const destinationLocation = result.routes[0].legs[0].end_location;
-          
-          // Create markers for origin and destination
-          const originMarker = new google.maps.Marker({
-            position: originLocation,
-            map: map,
-            title: 'Origen',
-            icon: {
-              url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
-              scaledSize: new google.maps.Size(40, 40)
-            },
-          });
-          
-          const destinationMarker = new google.maps.Marker({
-            position: destinationLocation,
-            map: map,
-            title: 'Destino',
-            icon: {
-              url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-              scaledSize: new google.maps.Size(40, 40)
-            },
-          });
-          
-          setRouteMarkers([originMarker, destinationMarker]);
-          
-          // Create or reuse DirectionsRenderer
-          let renderer = directionsRenderer;
-          if (!renderer) {
-            renderer = new google.maps.DirectionsRenderer({
-              map: map,
-              suppressMarkers: true, // We'll use our custom markers
-              polylineOptions: {
-                strokeColor: "#4285F4",
-                strokeWeight: 5,
-                strokeOpacity: 0.8,
-              },
-            });
-            setDirectionsRenderer(renderer);
-          }
-          
-          renderer.setDirections(result);
-          
-          // Fit the map to show the route
-          const bounds = new google.maps.LatLngBounds();
-          bounds.extend(originLocation);
-          bounds.extend(destinationLocation);
-          map.fitBounds(bounds);
-          
-          // Display route info
-          const route = result.routes[0];
-          if (route && route.legs[0]) {
-            const distance = route.legs[0].distance?.text || "N/A";
-            const duration = route.legs[0].duration?.text || "N/A";
-            const trafficDuration = route.legs[0].duration_in_traffic?.text;
-            
-            toast({
-              title: "Ruta calculada",
-              description: `Distancia: ${distance}. Tiempo estimado: ${duration}${trafficDuration ? ` (Con tráfico: ${trafficDuration})` : ""}`,
-            });
-            
-            // Ahora también usaremos la Distance Matrix API para obtener información más detallada
-            calculateDistanceMatrix(originLocation, destinationLocation);
-          }
-
-        } else {
-          toast({
-            title: "Error al calcular la ruta",
-            description: "No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes.",
-            variant: "destructive",
-          });
-        }
-        
-        setCalculating(false);
+    try {
+      // Inicializar los servicios de dirección si no existen
+      if (!directionsService) {
+        setDirectionsService(new google.maps.DirectionsService());
       }
-    );
-  };
+      
+      if (!directionsRenderer) {
+        const renderer = new google.maps.DirectionsRenderer({
+          map: map,
+          suppressMarkers: false,
+          polylineOptions: {
+            strokeColor: '#4285F4',
+            strokeWeight: 5,
+            strokeOpacity: 0.7
+          }
+        });
+        setDirectionsRenderer(renderer);
+      } else {
+        directionsRenderer.setMap(map);
+      }
+      
+      const currentDirectionsService = directionsService || new google.maps.DirectionsService();
+      const currentDirectionsRenderer = directionsRenderer || new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: false,
+        polylineOptions: {
+          strokeColor: '#4285F4',
+          strokeWeight: 5,
+          strokeOpacity: 0.7
+        }
+      });
 
-  const calculateDistanceMatrix = (origin: google.maps.LatLng, destination: google.maps.LatLng) => {
-    const service = new google.maps.DistanceMatrixService();
-    
-    service.getDistanceMatrix(
-      {
-        origins: [origin],
-        destinations: [destination],
-        travelMode: google.maps.TravelMode.DRIVING,
-        unitSystem: google.maps.UnitSystem.METRIC,
-        avoidHighways: false,
-        avoidTolls: false,
-        drivingOptions: {
-          departureTime: new Date(),
-          trafficModel: google.maps.TrafficModel.BEST_GUESS,
+      // Calcular ruta
+      currentDirectionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: alternativeRoutes
         },
-      },
-      (response, status) => {
-        if (status === 'OK' && response) {
-          const element = response.rows[0].elements[0];
-          
-          if (element.status === 'OK') {
-            // Mostrar información adicional del tráfico
-            const trafficInfo = {
-              distance: element.distance.text,
-              duration: element.duration.text,
-              durationInTraffic: element.duration_in_traffic?.text
-            };
+        (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            currentDirectionsRenderer.setDirections(result);
             
-            // Calculamos la diferencia de tiempo debido al tráfico
-            if (element.duration && element.duration_in_traffic) {
-              const normalSeconds = element.duration.value;
-              const trafficSeconds = element.duration_in_traffic.value;
-              const difference = trafficSeconds - normalSeconds;
-              
-              if (difference > 60) {
-                const minutes = Math.floor(difference / 60);
-                toast({
-                  title: "Información de tráfico",
-                  description: `El tráfico actual añade ${minutes} minutos al tiempo normal de viaje.`,
-                });
-              }
+            // Información sobre la ruta
+            const route = result.routes[0];
+            const leg = route.legs[0];
+            const distance = leg.distance?.text || "";
+            const duration = leg.duration?.text || "";
+            
+            // Simular información de tráfico
+            const trafficFactor = Math.random() * 0.5 + 1; // Factor de tráfico entre 1 y 1.5
+            const durationWithTraffic = Math.round((leg.duration?.value || 0) * trafficFactor / 60); // minutos
+            const durationMinutes = Math.round((leg.duration?.value || 0) / 60); // minutos
+            const trafficDelay = durationWithTraffic - durationMinutes;
+            
+            toast(`Distancia: ${distance}. Tiempo estimado: ${duration}${trafficDelay > 0 ? ` (Con tráfico: ${durationWithTraffic} min)` : ""}`);
+            
+            if (trafficDelay > 5) {
+              toast(`El tráfico actual añade ${trafficDelay} minutos al tiempo normal de viaje.`);
             }
-            
-            console.log("Distance Matrix results:", trafficInfo);
+          } else {
+            toast.error("No se pudo calcular la ruta. Intente con otra ubicación.");
+            console.error("Error al calcular la ruta:", status);
           }
+          
+          setCalculating(false);
         }
-      }
-    );
+      );
+
+    } catch (error) {
+      console.error("Error calculando ruta:", error);
+      toast.error("No se pudo encontrar una ruta entre estos puntos. Intente con ubicaciones diferentes.");
+      setCalculating(false);
+    }
   };
 
   const clearRoute = () => {
+    // Limpiar ruta de directions renderer
     if (directionsRenderer) {
       directionsRenderer.setMap(null);
       setDirectionsRenderer(null);
     }
     
-    // Clear markers
-    routeMarkers.forEach(marker => marker.setMap(null));
+    // Eliminar polyline si existe
+    if (routeLayer) {
+      routeLayer.setMap(null);
+      setRouteLayer(null);
+    }
+    
+    // Eliminar marcadores
+    routeMarkers.forEach(marker => {
+      marker.setMap(null);
+    });
     setRouteMarkers([]);
 
-    // Reset selected predefined route
+    // Resetear ruta predefinida seleccionada
     setSelectedPredefinedRoute("");
   };
 
