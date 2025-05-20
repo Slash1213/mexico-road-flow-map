@@ -6,7 +6,8 @@ import { TrafficMap } from "@/components/TrafficMap";
 import { TrafficChart } from "@/components/TrafficChart";
 import { RoadList } from "@/components/RoadList";
 import { MexicoRegionSelector } from "@/components/MexicoRegionSelector";
-import { MapPin, Route, ChartLine, List } from "lucide-react";
+import { MapPin, Route, ChartLine, List, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState("all");
@@ -25,10 +26,16 @@ const Index = () => {
                 SmartRoads
               </h1>
             </div>
-            <MexicoRegionSelector
-              selectedRegion={selectedRegion}
-              onChange={setSelectedRegion}
-            />
+            <div className="flex items-center gap-4">
+              <MexicoRegionSelector
+                selectedRegion={selectedRegion}
+                onChange={setSelectedRegion}
+              />
+              <Link to="/about" className="flex items-center gap-1 text-blue-600 hover:underline">
+                <FileText className="h-4 w-4" />
+                <span>Sobre el proyecto</span>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -212,4 +219,3 @@ const StatCard = ({
 };
 
 export default Index;
-
